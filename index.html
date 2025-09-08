@@ -91,6 +91,10 @@
             margin-bottom: 20px;
         }
 
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
         .form-group label {
             display: block;
             margin-bottom: 8px;
@@ -161,8 +165,12 @@
             background: #f8f9fa;
             border-radius: 10px;
             padding: 15px;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             border-left: 4px solid #667eea;
+        }
+
+        .vehicle-item:last-child {
+            margin-bottom: 0;
         }
 
         .vehicle-info {
@@ -285,11 +293,13 @@
 
         .format-feedback {
             font-size: 12px;
-            margin-top: 5px;
-            padding: 5px 8px;
+            margin-top: 8px;
+            margin-bottom: 0;
+            padding: 6px 10px;
             border-radius: 4px;
             background-color: rgba(0,0,0,0.05);
             transition: all 0.3s ease;
+            line-height: 1.4;
         }
 
         .format-feedback[style*="color: #28a745"] {
@@ -531,10 +541,10 @@
                         <div class="vehicle-number">${vehicle.licensePlate}</div>
                         <div class="vehicle-type">${vehicle.vehicleType}</div>
                     </div>
-                    <div style="margin-bottom: 10px; font-size: 14px; color: #666;">
-                        <div>소유자: ${vehicle.ownerName}</div>
-                        <div>연락처: ${vehicle.phoneNumber}</div>
-                        <div>주소: ${vehicle.building}동 ${vehicle.unit}호</div>
+                    <div style="margin-bottom: 12px; font-size: 14px; color: #666; line-height: 1.5;">
+                        <div style="margin-bottom: 4px;">소유자: ${vehicle.ownerName}</div>
+                        <div style="margin-bottom: 4px;">연락처: ${vehicle.phoneNumber}</div>
+                        <div style="margin-bottom: 4px;">주소: ${vehicle.building}동 ${vehicle.unit}호</div>
                         <div>등록일: ${new Date(vehicle.registeredAt).toLocaleDateString()}</div>
                     </div>
                     <div class="vehicle-actions">
@@ -632,12 +642,12 @@
                 searchResult.innerHTML = `
                     <div class="search-result">
                         <h3>✅ 등록된 차량입니다</h3>
-                        <div style="margin-top: 15px; text-align: left;">
-                            <div><strong>차량번호:</strong> ${vehicle.licensePlate}</div>
-                            <div><strong>차량종류:</strong> ${vehicle.vehicleType}</div>
-                            <div><strong>소유자:</strong> ${vehicle.ownerName}</div>
-                            <div><strong>연락처:</strong> ${vehicle.phoneNumber}</div>
-                            <div><strong>주소:</strong> ${vehicle.building}동 ${vehicle.unit}호</div>
+                        <div style="margin-top: 15px; text-align: left; line-height: 1.6;">
+                            <div style="margin-bottom: 6px;"><strong>차량번호:</strong> ${vehicle.licensePlate}</div>
+                            <div style="margin-bottom: 6px;"><strong>차량종류:</strong> ${vehicle.vehicleType}</div>
+                            <div style="margin-bottom: 6px;"><strong>소유자:</strong> ${vehicle.ownerName}</div>
+                            <div style="margin-bottom: 6px;"><strong>연락처:</strong> ${vehicle.phoneNumber}</div>
+                            <div style="margin-bottom: 6px;"><strong>주소:</strong> ${vehicle.building}동 ${vehicle.unit}호</div>
                             <div><strong>등록일:</strong> ${new Date(vehicle.registeredAt).toLocaleDateString()}</div>
                         </div>
                     </div>
