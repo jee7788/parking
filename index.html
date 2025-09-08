@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주차관리 앱</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="주차관리">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #6c757d;
+            transition: all 0.3s ease;
+        }
+
+        .nav-tab.active {
+            background: white;
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .content {
+            padding: 20px;
+            min-height: 400px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .vehicle-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .vehicle-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .vehicle-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .vehicle-number {
+            font-weight: 600;
+            font-size: 18px;
+            color: #333;
+        }
+
+        .vehicle-type {
+            background: #667eea;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 15px;
+            font-size: 12px;
+        }
+
+        .vehicle-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-small {
+            padding: 8px 12px;
+            font-size: 12px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-edit {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+        }
+
+        .search-result {
+            background: #e8f5e8;
+            border: 2px solid #28a745;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .search-result.not-found {
+            background: #f8d7da;
+            border-color: #dc3545;
+        }
+
+        .search-result h3 {
+            color: #28a745;
+            margin-bottom: 10px;
+        }
+
+        .search-result.not-found h3 {
+            color: #dc3545;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            
+            .container {
+                border-radius: 15px;
+            }
+            
+            .header {
+                padding: 20px 15px;
+            }
+            
+            .content {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚗 주차관리</h1>
+            <p>차량 등록 및 주차 확인</p>
+        </div>
+
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="showTab('register')">차량 등록</button>
+            <button class="nav-tab" onclick="showTab('list')">등록차량</button>
+            <button class="nav-tab" onclick="showTab('search')">주차 조회</button>
+        </div>
+
+        <div class="content">
+            <!-- 차량 등록 탭 -->
+            <div id="register" class="tab-content active">
+                <h3 style="margin-bottom: 20px; color: #333;">새 차량 등록</h3>
+                <form id="vehicleForm">
+                    <div class="form-group">
+                        <label for="licensePlate">차량번호</label>
+                        <input type="text" id="licensePlate" placeholder="예: 12가3456" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="vehicleType">차량종류</label>
+                        <select id="vehicleType" required>
+                            <option value="">선택하세요</option>
+                            <option value="승용차">승용차</option>
+                            <option value="SUV">SUV</option>
+                            <option value="승합차">승합차</option>
+                            <option value="화물차">화물차</option>
+                            <option value="오토바이">오토바이</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="ownerName">소유자명</label>
+                        <input type="text" id="ownerName" placeholder="홍길동" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="phoneNumber">연락처</label>
+                        <input type="tel" id="phoneNumber" placeholder="010-1234-5678" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="building">동</label>
+                        <input type="number" id="building" placeholder="1" min="1" max="99" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="unit">호수</label>
+                        <input type="number" id="unit" placeholder="101" min="101" max="9999" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">차량 등록</button>
+                </form>
+            </div>
+
+            <!-- 등록차량 목록 탭 -->
+            <div id="list" class="tab-content">
+                <h3 style="margin-bottom: 20px; color: #333;">등록된 차량</h3>
+                <div id="vehicleList" class="vehicle-list">
+                    <!-- 차량 목록이 여기에 동적으로 추가됩니다 -->
+                </div>
+            </div>
+
+            <!-- 주차 조회 탭 -->
+            <div id="search" class="tab-content">
+                <h3 style="margin-bottom: 20px; color: #333;">주차된 차량 조회</h3>
+                <div class="form-group">
+                    <label for="searchPlate">차량번호 입력</label>
+                    <input type="text" id="searchPlate" placeholder="예: 12가3456">
+                </div>
+                <button onclick="searchVehicle()" class="btn btn-success">조회하기</button>
+                <div id="searchResult"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 수정 모달 -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>차량 정보 수정</h3>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <form id="editForm">
+                <input type="hidden" id="editId">
+                <div class="form-group">
+                    <label for="editLicensePlate">차량번호</label>
+                    <input type="text" id="editLicensePlate" required>
+                </div>
+                <div class="form-group">
+                    <label for="editVehicleType">차량종류</label>
+                    <select id="editVehicleType" required>
+                        <option value="승용차">승용차</option>
+                        <option value="SUV">SUV</option>
+                        <option value="승합차">승합차</option>
+                        <option value="화물차">화물차</option>
+                        <option value="오토바이">오토바이</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editOwnerName">소유자명</label>
+                    <input type="text" id="editOwnerName" required>
+                </div>
+                <div class="form-group">
+                    <label for="editPhoneNumber">연락처</label>
+                    <input type="tel" id="editPhoneNumber" required>
+                </div>
+                <div class="form-group">
+                    <label for="editBuilding">동</label>
+                    <input type="number" id="editBuilding" min="1" max="99" required>
+                </div>
+                <div class="form-group">
+                    <label for="editUnit">호수</label>
+                    <input type="number" id="editUnit" min="101" max="9999" required>
+                </div>
+                <button type="submit" class="btn btn-primary">수정 완료</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 전역 변수
+        let vehicles = JSON.parse(localStorage.getItem('vehicles')) || [];
+        let currentEditId = null;
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            loadVehicles();
+            
+            // 폼 이벤트 리스너
+            document.getElementById('vehicleForm').addEventListener('submit', addVehicle);
+            document.getElementById('editForm').addEventListener('submit', updateVehicle);
+        });
+
+        // 탭 전환
+        function showTab(tabName) {
+            // 모든 탭과 콘텐츠 비활성화
+            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // 선택된 탭과 콘텐츠 활성화
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+            
+            // 등록차량 탭으로 이동할 때 목록 새로고침
+            if (tabName === 'list') {
+                loadVehicles();
+            }
+        }
+
+        // 차량 추가
+        function addVehicle(e) {
+            e.preventDefault();
+            
+            const licensePlate = document.getElementById('licensePlate').value.trim();
+            const vehicleType = document.getElementById('vehicleType').value;
+            const ownerName = document.getElementById('ownerName').value.trim();
+            const phoneNumber = document.getElementById('phoneNumber').value.trim();
+            const building = document.getElementById('building').value;
+            const unit = document.getElementById('unit').value;
+            
+            // 중복 체크
+            if (vehicles.some(v => v.licensePlate === licensePlate)) {
+                alert('이미 등록된 차량번호입니다.');
+                return;
+            }
+            
+            const vehicle = {
+                id: Date.now(),
+                licensePlate: licensePlate,
+                vehicleType: vehicleType,
+                ownerName: ownerName,
+                phoneNumber: phoneNumber,
+                building: building,
+                unit: unit,
+                registeredAt: new Date().toISOString()
+            };
+            
+            vehicles.push(vehicle);
+            saveVehicles();
+            
+            // 폼 초기화
+            document.getElementById('vehicleForm').reset();
+            
+            alert('차량이 성공적으로 등록되었습니다!');
+        }
+
+        // 차량 목록 로드
+        function loadVehicles() {
+            const vehicleList = document.getElementById('vehicleList');
+            
+            if (vehicles.length === 0) {
+                vehicleList.innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size: 48px; margin-bottom: 20px;">🚗</div>
+                        <p>등록된 차량이 없습니다.</p>
+                        <p style="font-size: 14px; margin-top: 10px;">차량 등록 탭에서 새 차량을 등록해보세요.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            vehicleList.innerHTML = vehicles.map(vehicle => `
+                <div class="vehicle-item">
+                    <div class="vehicle-info">
+                        <div class="vehicle-number">${vehicle.licensePlate}</div>
+                        <div class="vehicle-type">${vehicle.vehicleType}</div>
+                    </div>
+                    <div style="margin-bottom: 10px; font-size: 14px; color: #666;">
+                        <div>소유자: ${vehicle.ownerName}</div>
+                        <div>연락처: ${vehicle.phoneNumber}</div>
+                        <div>주소: ${vehicle.building}동 ${vehicle.unit}호</div>
+                        <div>등록일: ${new Date(vehicle.registeredAt).toLocaleDateString()}</div>
+                    </div>
+                    <div class="vehicle-actions">
+                        <button class="btn-small btn-edit" onclick="editVehicle(${vehicle.id})">수정</button>
+                        <button class="btn-small btn-delete" onclick="deleteVehicle(${vehicle.id})">삭제</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 차량 수정
+        function editVehicle(id) {
+            const vehicle = vehicles.find(v => v.id === id);
+            if (!vehicle) return;
+            
+            currentEditId = id;
+            document.getElementById('editId').value = id;
+            document.getElementById('editLicensePlate').value = vehicle.licensePlate;
+            document.getElementById('editVehicleType').value = vehicle.vehicleType;
+            document.getElementById('editOwnerName').value = vehicle.ownerName;
+            document.getElementById('editPhoneNumber').value = vehicle.phoneNumber;
+            document.getElementById('editBuilding').value = vehicle.building;
+            document.getElementById('editUnit').value = vehicle.unit;
+            
+            document.getElementById('editModal').style.display = 'block';
+        }
+
+        // 차량 정보 업데이트
+        function updateVehicle(e) {
+            e.preventDefault();
+            
+            const id = parseInt(document.getElementById('editId').value);
+            const licensePlate = document.getElementById('editLicensePlate').value.trim();
+            const vehicleType = document.getElementById('editVehicleType').value;
+            const ownerName = document.getElementById('editOwnerName').value.trim();
+            const phoneNumber = document.getElementById('editPhoneNumber').value.trim();
+            const building = document.getElementById('editBuilding').value;
+            const unit = document.getElementById('editUnit').value;
+            
+            // 중복 체크 (자기 자신 제외)
+            if (vehicles.some(v => v.licensePlate === licensePlate && v.id !== id)) {
+                alert('이미 등록된 차량번호입니다.');
+                return;
+            }
+            
+            const vehicleIndex = vehicles.findIndex(v => v.id === id);
+            if (vehicleIndex !== -1) {
+                vehicles[vehicleIndex] = {
+                    ...vehicles[vehicleIndex],
+                    licensePlate: licensePlate,
+                    vehicleType: vehicleType,
+                    ownerName: ownerName,
+                    phoneNumber: phoneNumber,
+                    building: building,
+                    unit: unit
+                };
+                
+                saveVehicles();
+                loadVehicles();
+                closeModal();
+                
+                alert('차량 정보가 수정되었습니다!');
+            }
+        }
+
+        // 차량 삭제
+        function deleteVehicle(id) {
+            if (confirm('정말로 이 차량을 삭제하시겠습니까?')) {
+                vehicles = vehicles.filter(v => v.id !== id);
+                saveVehicles();
+                loadVehicles();
+                alert('차량이 삭제되었습니다.');
+            }
+        }
+
+        // 차량 조회
+        function searchVehicle() {
+            const searchPlate = document.getElementById('searchPlate').value.trim();
+            const searchResult = document.getElementById('searchResult');
+            
+            if (!searchPlate) {
+                alert('차량번호를 입력해주세요.');
+                return;
+            }
+            
+            const vehicle = vehicles.find(v => v.licensePlate === searchPlate);
+            
+            if (vehicle) {
+                searchResult.innerHTML = `
+                    <div class="search-result">
+                        <h3>✅ 등록된 차량입니다</h3>
+                        <div style="margin-top: 15px; text-align: left;">
+                            <div><strong>차량번호:</strong> ${vehicle.licensePlate}</div>
+                            <div><strong>차량종류:</strong> ${vehicle.vehicleType}</div>
+                            <div><strong>소유자:</strong> ${vehicle.ownerName}</div>
+                            <div><strong>연락처:</strong> ${vehicle.phoneNumber}</div>
+                            <div><strong>주소:</strong> ${vehicle.building}동 ${vehicle.unit}호</div>
+                            <div><strong>등록일:</strong> ${new Date(vehicle.registeredAt).toLocaleDateString()}</div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                searchResult.innerHTML = `
+                    <div class="search-result not-found">
+                        <h3>❌ 등록되지 않은 차량입니다</h3>
+                        <p>입력하신 차량번호로 등록된 차량을 찾을 수 없습니다.</p>
+                        <p style="margin-top: 10px; font-size: 14px;">차량 등록 탭에서 새로 등록해주세요.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // 모달 닫기
+        function closeModal() {
+            document.getElementById('editModal').style.display = 'none';
+            currentEditId = null;
+        }
+
+        // 모달 외부 클릭 시 닫기
+        window.onclick = function(event) {
+            const modal = document.getElementById('editModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+
+        // 데이터 저장
+        function saveVehicles() {
+            localStorage.setItem('vehicles', JSON.stringify(vehicles));
+        }
+
+        // 차량번호 입력 시 자동 포맷팅
+        document.getElementById('licensePlate').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/[^가-힣0-9]/g, '');
+            if (value.length > 2 && !value.includes('가') && !value.includes('나') && !value.includes('다') && !value.includes('라') && !value.includes('마') && !value.includes('거') && !value.includes('너') && !value.includes('더') && !value.includes('러') && !value.includes('머') && !value.includes('버') && !value.includes('서') && !value.includes('어') && !value.includes('저') && !value.includes('처') && !value.includes('커') && !value.includes('터') && !value.includes('퍼') && !value.includes('허')) {
+                // 숫자만 입력된 경우 자동으로 '가' 추가
+                if (value.length === 2) {
+                    value = value + '가';
+                }
+            }
+            e.target.value = value;
+        });
+
+        document.getElementById('searchPlate').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/[^가-힣0-9]/g, '');
+            if (value.length > 2 && !value.includes('가') && !value.includes('나') && !value.includes('다') && !value.includes('라') && !value.includes('마') && !value.includes('거') && !value.includes('너') && !value.includes('더') && !value.includes('러') && !value.includes('머') && !value.includes('버') && !value.includes('서') && !value.includes('어') && !value.includes('저') && !value.includes('처') && !value.includes('커') && !value.includes('터') && !value.includes('퍼') && !value.includes('허')) {
+                if (value.length === 2) {
+                    value = value + '가';
+                }
+            }
+            e.target.value = value;
+        });
+    </script>
+</body>
+</html>
