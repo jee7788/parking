@@ -340,6 +340,7 @@
             <button class="nav-tab active" onclick="showTab('register')">차량 등록</button>
             <button class="nav-tab" onclick="showTab('list')">등록차량</button>
             <button class="nav-tab" onclick="showTab('search')">주차 조회</button>
+            <button class="nav-tab" onclick="showTab('backup')">데이터 관리</button>
         </div>
 
         <div class="content">
@@ -400,6 +401,49 @@
                 <button onclick="searchVehicle()" class="btn btn-success">조회하기</button>
                 <div id="searchResult"></div>
             </div>
+
+            <!-- 데이터 관리 탭 -->
+            <div id="backup" class="tab-content">
+                <h3 style="margin-bottom: 20px; color: #333;">데이터 백업 및 복원</h3>
+                
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                    <h4 style="margin-bottom: 15px; color: #333;">💾 데이터 백업</h4>
+                    <p style="margin-bottom: 15px; color: #666; font-size: 14px;">
+                        등록된 모든 차량 정보를 JSON 파일로 내보내서 안전하게 보관할 수 있습니다.
+                    </p>
+                    <button onclick="exportData()" class="btn btn-success">데이터 내보내기</button>
+                </div>
+
+                <div style="background: #e8f5e8; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                    <h4 style="margin-bottom: 15px; color: #333;">📥 데이터 복원</h4>
+                    <p style="margin-bottom: 15px; color: #666; font-size: 14px;">
+                        백업한 JSON 파일을 선택하여 데이터를 복원할 수 있습니다.
+                    </p>
+                    <input type="file" id="importFile" accept=".json" style="margin-bottom: 10px; width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px;">
+                    <button onclick="importData()" class="btn btn-primary">데이터 가져오기</button>
+                </div>
+
+                <div style="background: #fff3cd; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                    <h4 style="margin-bottom: 15px; color: #333;">🗑️ 데이터 초기화</h4>
+                    <p style="margin-bottom: 15px; color: #666; font-size: 14px;">
+                        모든 차량 데이터를 삭제합니다. 복구할 수 없으니 주의하세요.
+                    </p>
+                    <button onclick="clearAllData()" class="btn btn-danger">모든 데이터 삭제</button>
+                </div>
+
+                <div style="background: #d1ecf1; padding: 20px; border-radius: 10px;">
+                    <h4 style="margin-bottom: 15px; color: #333;">ℹ️ 저장 방식</h4>
+                    <p style="margin-bottom: 10px; color: #666; font-size: 14px;">
+                        <strong>IndexedDB:</strong> 브라우저 캐시 삭제해도 데이터 유지
+                    </p>
+                    <p style="margin-bottom: 10px; color: #666; font-size: 14px;">
+                        <strong>LocalStorage:</strong> 백업 저장소로 사용
+                    </p>
+                    <p style="color: #666; font-size: 14px;">
+                        <strong>JSON 파일:</strong> 수동 백업 및 다른 기기로 이동 가능
+                    </p>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -449,12 +493,78 @@
 
     <script>
         // 전역 변수
-        let vehicles = JSON.parse(localStorage.getItem('vehicles')) || [];
+        let vehicles = [];
         let currentEditId = null;
+        let db = null;
+
+        // IndexedDB 초기화
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('ParkingAppDB', 1);
+                
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    db = request.result;
+                    resolve(db);
+                };
+                
+                request.onupgradeneeded = (event) => {
+                    const database = event.target.result;
+                    if (!database.objectStoreNames.contains('vehicles')) {
+                        database.createObjectStore('vehicles', { keyPath: 'id' });
+                    }
+                };
+            });
+        }
+
+        // IndexedDB에서 데이터 로드
+        async function loadVehiclesFromDB() {
+            try {
+                if (!db) await initDB();
+                
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction(['vehicles'], 'readonly');
+                    const store = transaction.objectStore('vehicles');
+                    const request = store.getAll();
+                    
+                    request.onsuccess = () => resolve(request.result || []);
+                    request.onerror = () => reject(request.error);
+                });
+            } catch (error) {
+                console.error('IndexedDB 로드 실패, localStorage 사용:', error);
+                return JSON.parse(localStorage.getItem('vehicles')) || [];
+            }
+        }
+
+        // IndexedDB에 데이터 저장
+        async function saveVehiclesToDB(vehiclesData) {
+            try {
+                if (!db) await initDB();
+                
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction(['vehicles'], 'readwrite');
+                    const store = transaction.objectStore('vehicles');
+                    
+                    // 기존 데이터 모두 삭제
+                    store.clear();
+                    
+                    // 새 데이터 추가
+                    vehiclesData.forEach(vehicle => {
+                        store.add(vehicle);
+                    });
+                    
+                    transaction.oncomplete = () => resolve();
+                    transaction.onerror = () => reject(transaction.error);
+                });
+            } catch (error) {
+                console.error('IndexedDB 저장 실패, localStorage 사용:', error);
+                localStorage.setItem('vehicles', JSON.stringify(vehiclesData));
+            }
+        }
 
         // 페이지 로드 시 초기화
-        document.addEventListener('DOMContentLoaded', function() {
-            loadVehicles();
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadVehicles();
             
             // 폼 이벤트 리스너
             document.getElementById('vehicleForm').addEventListener('submit', addVehicle);
@@ -478,7 +588,7 @@
         }
 
         // 차량 추가
-        function addVehicle(e) {
+        async function addVehicle(e) {
             e.preventDefault();
             
             const licensePlate = document.getElementById('licensePlate').value.trim();
@@ -512,7 +622,7 @@
             };
             
             vehicles.push(vehicle);
-            saveVehicles();
+            await saveVehicles();
             
             // 폼 초기화
             document.getElementById('vehicleForm').reset();
@@ -521,38 +631,45 @@
         }
 
         // 차량 목록 로드
-        function loadVehicles() {
-            const vehicleList = document.getElementById('vehicleList');
-            
-            if (vehicles.length === 0) {
-                vehicleList.innerHTML = `
-                    <div class="empty-state">
-                        <div style="font-size: 48px; margin-bottom: 20px;">🚗</div>
-                        <p>등록된 차량이 없습니다.</p>
-                        <p style="font-size: 14px; margin-top: 10px;">차량 등록 탭에서 새 차량을 등록해보세요.</p>
+        async function loadVehicles() {
+            try {
+                // IndexedDB에서 데이터 로드
+                vehicles = await loadVehiclesFromDB();
+                
+                const vehicleList = document.getElementById('vehicleList');
+                
+                if (vehicles.length === 0) {
+                    vehicleList.innerHTML = `
+                        <div class="empty-state">
+                            <div style="font-size: 48px; margin-bottom: 20px;">🚗</div>
+                            <p>등록된 차량이 없습니다.</p>
+                            <p style="font-size: 14px; margin-top: 10px;">차량 등록 탭에서 새 차량을 등록해보세요.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                vehicleList.innerHTML = vehicles.map(vehicle => `
+                    <div class="vehicle-item">
+                        <div class="vehicle-info">
+                            <div class="vehicle-number">${vehicle.licensePlate}</div>
+                            <div class="vehicle-type">${vehicle.vehicleType}</div>
+                        </div>
+                        <div style="margin-bottom: 12px; font-size: 14px; color: #666; line-height: 1.5;">
+                            <div style="margin-bottom: 4px;">소유자: ${vehicle.ownerName}</div>
+                            <div style="margin-bottom: 4px;">연락처: ${vehicle.phoneNumber}</div>
+                            <div style="margin-bottom: 4px;">주소: ${vehicle.building}동 ${vehicle.unit}호</div>
+                            <div>등록일: ${new Date(vehicle.registeredAt).toLocaleDateString()}</div>
+                        </div>
+                        <div class="vehicle-actions">
+                            <button class="btn-small btn-edit" onclick="editVehicle(${vehicle.id})">수정</button>
+                            <button class="btn-small btn-delete" onclick="deleteVehicle(${vehicle.id})">삭제</button>
+                        </div>
                     </div>
-                `;
-                return;
+                `).join('');
+            } catch (error) {
+                console.error('차량 목록 로드 실패:', error);
             }
-            
-            vehicleList.innerHTML = vehicles.map(vehicle => `
-                <div class="vehicle-item">
-                    <div class="vehicle-info">
-                        <div class="vehicle-number">${vehicle.licensePlate}</div>
-                        <div class="vehicle-type">${vehicle.vehicleType}</div>
-                    </div>
-                    <div style="margin-bottom: 12px; font-size: 14px; color: #666; line-height: 1.5;">
-                        <div style="margin-bottom: 4px;">소유자: ${vehicle.ownerName}</div>
-                        <div style="margin-bottom: 4px;">연락처: ${vehicle.phoneNumber}</div>
-                        <div style="margin-bottom: 4px;">주소: ${vehicle.building}동 ${vehicle.unit}호</div>
-                        <div>등록일: ${new Date(vehicle.registeredAt).toLocaleDateString()}</div>
-                    </div>
-                    <div class="vehicle-actions">
-                        <button class="btn-small btn-edit" onclick="editVehicle(${vehicle.id})">수정</button>
-                        <button class="btn-small btn-delete" onclick="deleteVehicle(${vehicle.id})">삭제</button>
-                    </div>
-                </div>
-            `).join('');
         }
 
         // 차량 수정
@@ -573,7 +690,7 @@
         }
 
         // 차량 정보 업데이트
-        function updateVehicle(e) {
+        async function updateVehicle(e) {
             e.preventDefault();
             
             const id = parseInt(document.getElementById('editId').value);
@@ -608,8 +725,8 @@
                     unit: unit
                 };
                 
-                saveVehicles();
-                loadVehicles();
+                await saveVehicles();
+                await loadVehicles();
                 closeModal();
                 
                 alert('차량 정보가 수정되었습니다!');
@@ -617,11 +734,11 @@
         }
 
         // 차량 삭제
-        function deleteVehicle(id) {
+        async function deleteVehicle(id) {
             if (confirm('정말로 이 차량을 삭제하시겠습니까?')) {
                 vehicles = vehicles.filter(v => v.id !== id);
-                saveVehicles();
-                loadVehicles();
+                await saveVehicles();
+                await loadVehicles();
                 alert('차량이 삭제되었습니다.');
             }
         }
@@ -677,9 +794,21 @@
             }
         }
 
-        // 데이터 저장
-        function saveVehicles() {
-            localStorage.setItem('vehicles', JSON.stringify(vehicles));
+        // 데이터 저장 (IndexedDB + localStorage 백업)
+        async function saveVehicles() {
+            try {
+                // IndexedDB에 저장
+                await saveVehiclesToDB(vehicles);
+                
+                // localStorage에도 백업 저장
+                localStorage.setItem('vehicles', JSON.stringify(vehicles));
+                
+                console.log('데이터 저장 완료 (IndexedDB + localStorage)');
+            } catch (error) {
+                console.error('데이터 저장 실패:', error);
+                // IndexedDB 실패 시 localStorage만 사용
+                localStorage.setItem('vehicles', JSON.stringify(vehicles));
+            }
         }
 
         // 차량번호 형식 검증 함수
@@ -759,6 +888,97 @@
             }
             
             input.parentNode.appendChild(feedback);
+        }
+
+        // 데이터 내보내기
+        function exportData() {
+            if (vehicles.length === 0) {
+                alert('내보낼 데이터가 없습니다.');
+                return;
+            }
+
+            const data = {
+                vehicles: vehicles,
+                exportDate: new Date().toISOString(),
+                version: '1.0.0'
+            };
+
+            const dataStr = JSON.stringify(data, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `parking_data_${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            
+            alert('데이터가 성공적으로 내보내졌습니다!');
+        }
+
+        // 데이터 가져오기
+        async function importData() {
+            const fileInput = document.getElementById('importFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('파일을 선택해주세요.');
+                return;
+            }
+
+            if (!file.name.endsWith('.json')) {
+                alert('JSON 파일만 선택할 수 있습니다.');
+                return;
+            }
+
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                
+                if (!data.vehicles || !Array.isArray(data.vehicles)) {
+                    alert('올바르지 않은 파일 형식입니다.');
+                    return;
+                }
+
+                if (confirm(`총 ${data.vehicles.length}개의 차량 데이터를 가져오시겠습니까?\n기존 데이터는 덮어씌워집니다.`)) {
+                    vehicles = data.vehicles;
+                    await saveVehicles();
+                    await loadVehicles();
+                    
+                    // 파일 입력 초기화
+                    fileInput.value = '';
+                    
+                    alert('데이터가 성공적으로 가져와졌습니다!');
+                }
+            } catch (error) {
+                alert('파일을 읽는 중 오류가 발생했습니다.\n올바른 JSON 파일인지 확인해주세요.');
+                console.error('Import error:', error);
+            }
+        }
+
+        // 모든 데이터 삭제
+        async function clearAllData() {
+            if (confirm('정말로 모든 데이터를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) {
+                if (confirm('마지막 확인: 모든 차량 데이터가 영구적으로 삭제됩니다.\n정말 진행하시겠습니까?')) {
+                    vehicles = [];
+                    
+                    try {
+                        // IndexedDB에서도 삭제
+                        if (db) {
+                            const transaction = db.transaction(['vehicles'], 'readwrite');
+                            const store = transaction.objectStore('vehicles');
+                            store.clear();
+                        }
+                        
+                        // localStorage에서도 삭제
+                        localStorage.removeItem('vehicles');
+                        
+                        await loadVehicles();
+                        alert('모든 데이터가 삭제되었습니다.');
+                    } catch (error) {
+                        console.error('Clear data error:', error);
+                        alert('데이터 삭제 중 오류가 발생했습니다.');
+                    }
+                }
+            }
         }
     </script>
 </body>
