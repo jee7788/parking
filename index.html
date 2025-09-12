@@ -718,6 +718,10 @@
                 document.getElementById('vehicleForm').reset();
                 console.log('폼 초기화 완료');
                 
+                // 등록차량 목록 새로고침
+                await loadVehicles();
+                console.log('차량 목록 새로고침 완료');
+                
                 alert('차량이 성공적으로 등록되었습니다!');
                 
             } catch (error) {
@@ -731,12 +735,16 @@
         // 차량 목록 로드
         async function loadVehicles() {
             try {
+                console.log('차량 목록 로드 시작...');
+                
                 // IndexedDB에서 데이터 로드
                 vehicles = await loadVehiclesFromDB();
+                console.log('로드된 차량 수:', vehicles.length);
                 
                 const vehicleList = document.getElementById('vehicleList');
                 
                 if (vehicles.length === 0) {
+                    console.log('등록된 차량이 없음 - 빈 상태 표시');
                     vehicleList.innerHTML = `
                         <div class="empty-state">
                             <div style="font-size: 48px; margin-bottom: 20px;">🚗</div>
@@ -747,6 +755,7 @@
                     return;
                 }
                 
+                console.log('차량 목록 HTML 생성 중...');
                 vehicleList.innerHTML = vehicles.map(vehicle => `
                     <div class="vehicle-item">
                         <div class="vehicle-info">
@@ -765,6 +774,7 @@
                         </div>
                     </div>
                 `).join('');
+                console.log('차량 목록 HTML 생성 완료');
             } catch (error) {
                 console.error('차량 목록 로드 실패:', error);
             }
@@ -808,9 +818,15 @@
         async function displaySearchHistory() {
             const searchHistoryList = document.getElementById('searchHistoryList');
             
-            if (!searchHistoryList) return;
+            if (!searchHistoryList) {
+                console.log('조회 기록 표시 요소를 찾을 수 없음');
+                return;
+            }
+            
+            console.log('조회 기록 표시 시작, 기록 수:', searchHistory.length);
             
             if (searchHistory.length === 0) {
+                console.log('조회 기록이 없음 - 빈 상태 표시');
                 searchHistoryList.innerHTML = `
                     <div class="empty-state" style="padding: 20px; text-align: center; color: #6c757d;">
                         <div style="font-size: 24px; margin-bottom: 10px;">📝</div>
@@ -966,6 +982,8 @@
                     </div>
                 `;
             } else {
+                console.log('등록되지 않은 차량 조회됨:', searchPlate);
+                
                 // 등록되지 않은 차량 조회 기록 저장
                 await saveSearchRecord(searchPlate);
                 
@@ -977,6 +995,8 @@
                         <p style="margin-top: 10px; font-size: 12px; color: #666;">조회 기록이 저장되었습니다.</p>
                     </div>
                 `;
+                
+                console.log('조회 결과 표시 완료');
             }
         }
 
