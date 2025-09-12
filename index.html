@@ -700,6 +700,14 @@
                 document.getElementById('vehicleForm').reset();
                 console.log('폼 초기화 완료');
                 
+                // 입력란 개별 초기화 (확실한 초기화를 위해)
+                document.getElementById('licensePlate').value = '';
+                document.getElementById('ownerName').value = '';
+                document.getElementById('phoneNumber').value = '';
+                document.getElementById('building').value = '';
+                document.getElementById('unit').value = '';
+                console.log('입력란 개별 초기화 완료');
+                
                 // 등록차량 목록 새로고침
                 await loadVehicles();
                 console.log('차량 목록 새로고침 완료');
@@ -1073,6 +1081,10 @@
                 searchResult.innerHTML = notFoundHTML;
                 console.log('등록되지 않은 차량 결과 표시 완료');
             }
+            
+            // 조회 완료 후 입력란 초기화
+            document.getElementById('searchPlate').value = '';
+            console.log('조회 입력란 초기화 완료');
             
             console.log('=== 차량 조회 함수 완료 ===');
         }
