@@ -812,37 +812,31 @@
                 return;
             }
             
-            // 차량번호별로 그룹화
-            const groupedHistory = {};
-            searchHistory.forEach(record => {
-                if (!groupedHistory[record.searchPlate]) {
-                    groupedHistory[record.searchPlate] = [];
-                }
-                groupedHistory[record.searchPlate].push(record);
-            });
+            // 최신 날짜 순으로 정렬 (앞날짜가 위로)
+            const sortedHistory = [...searchHistory].sort((a, b) => new Date(b.searchTime) - new Date(a.searchTime));
             
-            // 각 그룹을 최신 조회 시간 순으로 정렬
-            const sortedGroups = Object.keys(groupedHistory).sort((a, b) => {
-                const latestA = Math.max(...groupedHistory[a].map(r => new Date(r.searchTime).getTime()));
-                const latestB = Math.max(...groupedHistory[b].map(r => new Date(r.searchTime).getTime()));
-                return latestB - latestA;
-            });
-            
-            searchHistoryList.innerHTML = sortedGroups.slice(0, 10).map(plateNumber => {
-                const records = groupedHistory[plateNumber];
-                const latestRecord = records.sort((a, b) => new Date(b.searchTime) - new Date(a.searchTime))[0];
-                const count = records.length;
+            searchHistoryList.innerHTML = sortedHistory.slice(0, 20).map(record => {
+                const searchDate = new Date(record.searchTime);
+                const dateStr = searchDate.toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                });
+                const timeStr = searchDate.toLocaleTimeString('ko-KR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
                 
                 return `
                     <div class="vehicle-item" style="padding: 12px; margin-bottom: 8px;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <div>
                                 <div style="font-weight: 600; color: #333; margin-bottom: 4px;">
-                                    ${plateNumber}
-                                    ${count > 1 ? `<span style="font-size: 11px; color: #666; margin-left: 8px;">(${count}회 조회)</span>` : ''}
+                                    ${record.searchPlate}
                                 </div>
                                 <div style="font-size: 12px; color: #666;">
-                                    최근 조회: ${new Date(latestRecord.searchTime).toLocaleString()}
+                                    ${dateStr} ${timeStr}
                                 </div>
                             </div>
                             <div style="background: #dc3545; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px;">
