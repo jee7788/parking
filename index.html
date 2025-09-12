@@ -353,17 +353,6 @@
                         <input type="text" id="licensePlate" placeholder="예: 12가3456" required>
                     </div>
                     <div class="form-group">
-                        <label for="vehicleType">차량종류</label>
-                        <select id="vehicleType" required>
-                            <option value="">선택하세요</option>
-                            <option value="승용차">승용차</option>
-                            <option value="SUV">SUV</option>
-                            <option value="승합차">승합차</option>
-                            <option value="화물차">화물차</option>
-                            <option value="오토바이">오토바이</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
                         <label for="ownerName">소유자명</label>
                         <input type="text" id="ownerName" placeholder="홍길동" required>
                     </div>
@@ -398,8 +387,8 @@
                     <label for="searchPlate">차량번호 또는 뒤 4자리 입력</label>
                     <input type="text" id="searchPlate" placeholder="예: 12가3456 또는 3456">
                 </div>
-                <button onclick="searchVehicle()" class="btn btn-success">조회하기</button>
-                <div id="searchResult"></div>
+                <button type="button" onclick="searchVehicle()" class="btn btn-success">조회하기</button>
+                <div id="searchResult" style="margin-top: 20px; min-height: 50px;"></div>
                 
                 <!-- 조회 기록 섹션 -->
                 <div style="margin-top: 30px; border-top: 1px solid #e9ecef; padding-top: 20px;">
@@ -467,16 +456,6 @@
                 <div class="form-group">
                     <label for="editLicensePlate">차량번호</label>
                     <input type="text" id="editLicensePlate" required>
-                </div>
-                <div class="form-group">
-                    <label for="editVehicleType">차량종류</label>
-                    <select id="editVehicleType" required>
-                        <option value="승용차">승용차</option>
-                        <option value="SUV">SUV</option>
-                        <option value="승합차">승합차</option>
-                        <option value="화물차">화물차</option>
-                        <option value="오토바이">오토바이</option>
-                    </select>
                 </div>
                 <div class="form-group">
                     <label for="editOwnerName">소유자명</label>
@@ -669,16 +648,15 @@
             
             try {
                 const licensePlate = document.getElementById('licensePlate').value.trim();
-                const vehicleType = document.getElementById('vehicleType').value;
                 const ownerName = document.getElementById('ownerName').value.trim();
                 const phoneNumber = document.getElementById('phoneNumber').value.trim();
                 const building = document.getElementById('building').value;
                 const unit = document.getElementById('unit').value;
                 
-                console.log('입력된 값들:', { licensePlate, vehicleType, ownerName, phoneNumber, building, unit });
+                console.log('입력된 값들:', { licensePlate, ownerName, phoneNumber, building, unit });
                 
                 // 필수 필드 검증
-                if (!licensePlate || !vehicleType || !ownerName || !phoneNumber || !building || !unit) {
+                if (!licensePlate || !ownerName || !phoneNumber || !building || !unit) {
                     alert('모든 필드를 입력해주세요.');
                     return;
                 }
@@ -698,7 +676,6 @@
                 const vehicle = {
                     id: Date.now(),
                     licensePlate: licensePlate,
-                    vehicleType: vehicleType,
                     ownerName: ownerName,
                     phoneNumber: phoneNumber,
                     building: building,
@@ -760,7 +737,6 @@
                     <div class="vehicle-item">
                         <div class="vehicle-info">
                             <div class="vehicle-number">${vehicle.licensePlate}</div>
-                            <div class="vehicle-type">${vehicle.vehicleType}</div>
                         </div>
                         <div style="margin-bottom: 12px; font-size: 14px; color: #666; line-height: 1.5;">
                             <div style="margin-bottom: 4px;">소유자: ${vehicle.ownerName}</div>
@@ -836,26 +812,46 @@
                 return;
             }
             
-            // 최신 순으로 정렬
-            const sortedHistory = [...searchHistory].sort((a, b) => new Date(b.searchTime) - new Date(a.searchTime));
+            // 차량번호별로 그룹화
+            const groupedHistory = {};
+            searchHistory.forEach(record => {
+                if (!groupedHistory[record.searchPlate]) {
+                    groupedHistory[record.searchPlate] = [];
+                }
+                groupedHistory[record.searchPlate].push(record);
+            });
             
-            searchHistoryList.innerHTML = sortedHistory.slice(0, 10).map(record => `
-                <div class="vehicle-item" style="padding: 12px; margin-bottom: 8px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <div style="font-weight: 600; color: #333; margin-bottom: 4px;">
-                                ${record.searchPlate}
+            // 각 그룹을 최신 조회 시간 순으로 정렬
+            const sortedGroups = Object.keys(groupedHistory).sort((a, b) => {
+                const latestA = Math.max(...groupedHistory[a].map(r => new Date(r.searchTime).getTime()));
+                const latestB = Math.max(...groupedHistory[b].map(r => new Date(r.searchTime).getTime()));
+                return latestB - latestA;
+            });
+            
+            searchHistoryList.innerHTML = sortedGroups.slice(0, 10).map(plateNumber => {
+                const records = groupedHistory[plateNumber];
+                const latestRecord = records.sort((a, b) => new Date(b.searchTime) - new Date(a.searchTime))[0];
+                const count = records.length;
+                
+                return `
+                    <div class="vehicle-item" style="padding: 12px; margin-bottom: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: 600; color: #333; margin-bottom: 4px;">
+                                    ${plateNumber}
+                                    ${count > 1 ? `<span style="font-size: 11px; color: #666; margin-left: 8px;">(${count}회 조회)</span>` : ''}
+                                </div>
+                                <div style="font-size: 12px; color: #666;">
+                                    최근 조회: ${new Date(latestRecord.searchTime).toLocaleString()}
+                                </div>
                             </div>
-                            <div style="font-size: 12px; color: #666;">
-                                ${new Date(record.searchTime).toLocaleString()}
+                            <div style="background: #dc3545; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px;">
+                                미등록
                             </div>
-                        </div>
-                        <div style="background: #dc3545; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px;">
-                            미등록
                         </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         // 차량 수정
@@ -866,7 +862,6 @@
             currentEditId = id;
             document.getElementById('editId').value = id;
             document.getElementById('editLicensePlate').value = vehicle.licensePlate;
-            document.getElementById('editVehicleType').value = vehicle.vehicleType;
             document.getElementById('editOwnerName').value = vehicle.ownerName;
             document.getElementById('editPhoneNumber').value = vehicle.phoneNumber;
             document.getElementById('editBuilding').value = vehicle.building;
@@ -881,7 +876,6 @@
             
             const id = parseInt(document.getElementById('editId').value);
             const licensePlate = document.getElementById('editLicensePlate').value.trim();
-            const vehicleType = document.getElementById('editVehicleType').value;
             const ownerName = document.getElementById('editOwnerName').value.trim();
             const phoneNumber = document.getElementById('editPhoneNumber').value.trim();
             const building = document.getElementById('editBuilding').value;
@@ -904,7 +898,6 @@
                 vehicles[vehicleIndex] = {
                     ...vehicles[vehicleIndex],
                     licensePlate: licensePlate,
-                    vehicleType: vehicleType,
                     ownerName: ownerName,
                     phoneNumber: phoneNumber,
                     building: building,
@@ -931,16 +924,23 @@
 
         // 차량 조회
         async function searchVehicle() {
-            console.log('차량 조회 시도 중...');
+            console.log('=== 차량 조회 함수 호출됨 ===');
             
             const searchPlate = document.getElementById('searchPlate').value.trim();
             const searchResult = document.getElementById('searchResult');
             
             console.log('조회할 차량번호:', searchPlate);
             console.log('등록된 차량 수:', vehicles.length);
+            console.log('searchResult 요소:', searchResult);
             
             if (!searchPlate) {
                 alert('차량번호 또는 뒤 4자리를 입력해주세요.');
+                return;
+            }
+            
+            if (!searchResult) {
+                console.error('searchResult 요소를 찾을 수 없습니다!');
+                alert('조회 결과를 표시할 수 없습니다. 페이지를 새로고침해주세요.');
                 return;
             }
             
@@ -966,14 +966,15 @@
             }
             
             if (vehicle) {
+                console.log('등록된 차량 찾음:', vehicle);
                 const isPartialMatch = vehicle.licensePlate !== searchPlate;
-                searchResult.innerHTML = `
+                
+                const resultHTML = `
                     <div class="search-result">
                         <h3>✅ 등록된 차량입니다</h3>
                         ${isPartialMatch ? `<p style="margin-bottom: 10px; font-size: 14px; color: #666;">검색어 "${searchPlate}"로 찾은 차량</p>` : ''}
                         <div style="margin-top: 15px; text-align: left; line-height: 1.6;">
                             <div style="margin-bottom: 6px;"><strong>차량번호:</strong> ${vehicle.licensePlate}</div>
-                            <div style="margin-bottom: 6px;"><strong>차량종류:</strong> ${vehicle.vehicleType}</div>
                             <div style="margin-bottom: 6px;"><strong>소유자:</strong> ${vehicle.ownerName}</div>
                             <div style="margin-bottom: 6px;"><strong>연락처:</strong> ${vehicle.phoneNumber}</div>
                             <div style="margin-bottom: 6px;"><strong>주소:</strong> ${vehicle.building}동 ${vehicle.unit}호</div>
@@ -981,13 +982,16 @@
                         </div>
                     </div>
                 `;
+                
+                searchResult.innerHTML = resultHTML;
+                console.log('등록된 차량 결과 표시 완료');
             } else {
                 console.log('등록되지 않은 차량 조회됨:', searchPlate);
                 
                 // 등록되지 않은 차량 조회 기록 저장
                 await saveSearchRecord(searchPlate);
                 
-                searchResult.innerHTML = `
+                const notFoundHTML = `
                     <div class="search-result not-found">
                         <h3>❌ 등록되지 않은 차량입니다</h3>
                         <p>입력하신 "${searchPlate}"로 등록된 차량을 찾을 수 없습니다.</p>
@@ -996,8 +1000,11 @@
                     </div>
                 `;
                 
-                console.log('조회 결과 표시 완료');
+                searchResult.innerHTML = notFoundHTML;
+                console.log('등록되지 않은 차량 결과 표시 완료');
             }
+            
+            console.log('=== 차량 조회 함수 완료 ===');
         }
 
         // 모달 닫기
