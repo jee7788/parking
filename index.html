@@ -400,6 +400,14 @@
                 </div>
                 <button onclick="searchVehicle()" class="btn btn-success">조회하기</button>
                 <div id="searchResult"></div>
+                
+                <!-- 조회 기록 섹션 -->
+                <div style="margin-top: 30px; border-top: 1px solid #e9ecef; padding-top: 20px;">
+                    <h4 style="margin-bottom: 15px; color: #333;">📋 조회 기록</h4>
+                    <div id="searchHistoryList" class="vehicle-list" style="max-height: 200px;">
+                        <!-- 조회 기록이 여기에 동적으로 추가됩니다 -->
+                    </div>
+                </div>
             </div>
 
             <!-- 데이터 관리 탭 -->
@@ -494,13 +502,14 @@
     <script>
         // 전역 변수
         let vehicles = [];
+        let searchHistory = [];
         let currentEditId = null;
         let db = null;
 
         // IndexedDB 초기화
         function initDB() {
             return new Promise((resolve, reject) => {
-                const request = indexedDB.open('ParkingAppDB', 1);
+                const request = indexedDB.open('ParkingAppDB', 2);
                 
                 request.onerror = () => reject(request.error);
                 request.onsuccess = () => {
@@ -512,6 +521,9 @@
                     const database = event.target.result;
                     if (!database.objectStoreNames.contains('vehicles')) {
                         database.createObjectStore('vehicles', { keyPath: 'id' });
+                    }
+                    if (!database.objectStoreNames.contains('searchHistory')) {
+                        database.createObjectStore('searchHistory', { keyPath: 'id' });
                     }
                 };
             });
@@ -562,13 +574,70 @@
             }
         }
 
+        // 조회 기록 로드
+        async function loadSearchHistoryFromDB() {
+            try {
+                if (!db) await initDB();
+                
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction(['searchHistory'], 'readonly');
+                    const store = transaction.objectStore('searchHistory');
+                    const request = store.getAll();
+                    
+                    request.onsuccess = () => resolve(request.result || []);
+                    request.onerror = () => reject(request.error);
+                });
+            } catch (error) {
+                console.error('조회 기록 로드 실패, localStorage 사용:', error);
+                return JSON.parse(localStorage.getItem('searchHistory')) || [];
+            }
+        }
+
+        // 조회 기록 저장
+        async function saveSearchHistoryToDB(searchHistoryData) {
+            try {
+                if (!db) await initDB();
+                
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction(['searchHistory'], 'readwrite');
+                    const store = transaction.objectStore('searchHistory');
+                    
+                    // 기존 데이터 모두 삭제
+                    store.clear();
+                    
+                    // 새 데이터 추가
+                    searchHistoryData.forEach(record => {
+                        store.add(record);
+                    });
+                    
+                    transaction.oncomplete = () => resolve();
+                    transaction.onerror = () => reject(transaction.error);
+                });
+            } catch (error) {
+                console.error('조회 기록 저장 실패, localStorage 사용:', error);
+                localStorage.setItem('searchHistory', JSON.stringify(searchHistoryData));
+            }
+        }
+
         // 페이지 로드 시 초기화
         document.addEventListener('DOMContentLoaded', async function() {
-            await loadVehicles();
+            console.log('페이지 로드 시작...');
             
-            // 폼 이벤트 리스너
-            document.getElementById('vehicleForm').addEventListener('submit', addVehicle);
-            document.getElementById('editForm').addEventListener('submit', updateVehicle);
+            try {
+                await loadVehicles();
+                console.log('차량 데이터 로드 완료:', vehicles.length, '개');
+                
+                await loadSearchHistory();
+                console.log('조회 기록 로드 완료:', searchHistory.length, '개');
+                
+                // 폼 이벤트 리스너
+                document.getElementById('vehicleForm').addEventListener('submit', addVehicle);
+                document.getElementById('editForm').addEventListener('submit', updateVehicle);
+                
+                console.log('이벤트 리스너 등록 완료');
+            } catch (error) {
+                console.error('초기화 중 오류 발생:', error);
+            }
         });
 
         // 탭 전환
@@ -585,11 +654,18 @@
             if (tabName === 'list') {
                 loadVehicles();
             }
+            
+            // 주차 조회 탭으로 이동할 때 조회 기록 표시
+            if (tabName === 'search') {
+                displaySearchHistory();
+            }
         }
 
         // 차량 추가
         async function addVehicle(e) {
             e.preventDefault();
+            
+            console.log('차량 등록 시도 중...');
             
             const licensePlate = document.getElementById('licensePlate').value.trim();
             const vehicleType = document.getElementById('vehicleType').value;
@@ -597,6 +673,8 @@
             const phoneNumber = document.getElementById('phoneNumber').value.trim();
             const building = document.getElementById('building').value;
             const unit = document.getElementById('unit').value;
+            
+            console.log('입력된 값들:', { licensePlate, vehicleType, ownerName, phoneNumber, building, unit });
             
             // 차량번호 형식 검증
             if (!validateLicensePlate(licensePlate)) {
@@ -672,6 +750,78 @@
             }
         }
 
+        // 조회 기록 로드
+        async function loadSearchHistory() {
+            try {
+                searchHistory = await loadSearchHistoryFromDB();
+            } catch (error) {
+                console.error('조회 기록 로드 실패:', error);
+            }
+        }
+
+        // 조회 기록 저장
+        async function saveSearchRecord(searchPlate) {
+            try {
+                const searchRecord = {
+                    id: Date.now(),
+                    searchPlate: searchPlate,
+                    searchTime: new Date().toISOString(),
+                    result: 'not_found'
+                };
+                
+                searchHistory.push(searchRecord);
+                
+                // 최대 100개까지만 저장 (오래된 것부터 삭제)
+                if (searchHistory.length > 100) {
+                    searchHistory = searchHistory.slice(-100);
+                }
+                
+                await saveSearchHistoryToDB(searchHistory);
+                await displaySearchHistory();
+                console.log('조회 기록 저장됨:', searchRecord);
+            } catch (error) {
+                console.error('조회 기록 저장 실패:', error);
+            }
+        }
+
+        // 조회 기록 표시
+        async function displaySearchHistory() {
+            const searchHistoryList = document.getElementById('searchHistoryList');
+            
+            if (!searchHistoryList) return;
+            
+            if (searchHistory.length === 0) {
+                searchHistoryList.innerHTML = `
+                    <div class="empty-state" style="padding: 20px; text-align: center; color: #6c757d;">
+                        <div style="font-size: 24px; margin-bottom: 10px;">📝</div>
+                        <p>조회 기록이 없습니다.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // 최신 순으로 정렬
+            const sortedHistory = [...searchHistory].sort((a, b) => new Date(b.searchTime) - new Date(a.searchTime));
+            
+            searchHistoryList.innerHTML = sortedHistory.slice(0, 10).map(record => `
+                <div class="vehicle-item" style="padding: 12px; margin-bottom: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: 600; color: #333; margin-bottom: 4px;">
+                                ${record.searchPlate}
+                            </div>
+                            <div style="font-size: 12px; color: #666;">
+                                ${new Date(record.searchTime).toLocaleString()}
+                            </div>
+                        </div>
+                        <div style="background: #dc3545; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px;">
+                            미등록
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
         // 차량 수정
         function editVehicle(id) {
             const vehicle = vehicles.find(v => v.id === id);
@@ -744,9 +894,14 @@
         }
 
         // 차량 조회
-        function searchVehicle() {
+        async function searchVehicle() {
+            console.log('차량 조회 시도 중...');
+            
             const searchPlate = document.getElementById('searchPlate').value.trim();
             const searchResult = document.getElementById('searchResult');
+            
+            console.log('조회할 차량번호:', searchPlate);
+            console.log('등록된 차량 수:', vehicles.length);
             
             if (!searchPlate) {
                 alert('차량번호 또는 뒤 4자리를 입력해주세요.');
@@ -791,11 +946,15 @@
                     </div>
                 `;
             } else {
+                // 등록되지 않은 차량 조회 기록 저장
+                await saveSearchRecord(searchPlate);
+                
                 searchResult.innerHTML = `
                     <div class="search-result not-found">
                         <h3>❌ 등록되지 않은 차량입니다</h3>
                         <p>입력하신 "${searchPlate}"로 등록된 차량을 찾을 수 없습니다.</p>
                         <p style="margin-top: 10px; font-size: 14px;">차량번호 전체 또는 뒤 4자리 숫자로 검색해보세요.</p>
+                        <p style="margin-top: 10px; font-size: 12px; color: #666;">조회 기록이 저장되었습니다.</p>
                     </div>
                 `;
             }
@@ -1010,21 +1169,26 @@
         // 모든 데이터 삭제
         async function clearAllData() {
             if (confirm('정말로 모든 데이터를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) {
-                if (confirm('마지막 확인: 모든 차량 데이터가 영구적으로 삭제됩니다.\n정말 진행하시겠습니까?')) {
+                if (confirm('마지막 확인: 모든 차량 데이터와 조회 기록이 영구적으로 삭제됩니다.\n정말 진행하시겠습니까?')) {
                     vehicles = [];
+                    searchHistory = [];
                     
                     try {
                         // IndexedDB에서도 삭제
                         if (db) {
-                            const transaction = db.transaction(['vehicles'], 'readwrite');
-                            const store = transaction.objectStore('vehicles');
-                            store.clear();
+                            const transaction = db.transaction(['vehicles', 'searchHistory'], 'readwrite');
+                            const vehicleStore = transaction.objectStore('vehicles');
+                            const historyStore = transaction.objectStore('searchHistory');
+                            vehicleStore.clear();
+                            historyStore.clear();
                         }
                         
                         // localStorage에서도 삭제
                         localStorage.removeItem('vehicles');
+                        localStorage.removeItem('searchHistory');
                         
                         await loadVehicles();
+                        await displaySearchHistory();
                         alert('모든 데이터가 삭제되었습니다.');
                     } catch (error) {
                         console.error('Clear data error:', error);
