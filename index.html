@@ -375,6 +375,21 @@
             <!-- 등록차량 목록 탭 -->
             <div id="list" class="tab-content">
                 <h3 style="margin-bottom: 20px; color: #333;">등록된 차량</h3>
+                
+                <!-- 차량 검색 기능 -->
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                    <div class="form-group" style="margin-bottom: 10px;">
+                        <label for="searchVehicleList" style="font-size: 14px; color: #666;">🔍 차량 검색</label>
+                        <input type="text" id="searchVehicleList" placeholder="차량번호 또는 소유자명으로 검색..." style="font-size: 14px;">
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button onclick="clearVehicleSearch()" style="background: #6c757d; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;">
+                            검색 초기화
+                        </button>
+                        <span id="searchResultCount" style="font-size: 12px; color: #666;"></span>
+                    </div>
+                </div>
+                
                 <div id="vehicleList" class="vehicle-list">
                     <!-- 차량 목록이 여기에 동적으로 추가됩니다 -->
                 </div>
@@ -431,6 +446,17 @@
                         모든 차량 데이터를 삭제합니다. 복구할 수 없으니 주의하세요.
                     </p>
                     <button onclick="clearAllData()" class="btn btn-danger">모든 데이터 삭제</button>
+                </div>
+
+                <div style="background: #e8f4fd; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                    <h4 style="margin-bottom: 15px; color: #333;">🧪 테스트 데이터 생성</h4>
+                    <p style="margin-bottom: 15px; color: #666; font-size: 14px;">
+                        앱 기능 테스트를 위한 100개의 가상 차량 데이터를 생성할 수 있습니다.
+                    </p>
+                    <button onclick="generateTestData()" class="btn btn-primary" style="background: #17a2b8; margin-bottom: 10px;">100개 테스트 데이터 생성</button>
+                    <p style="font-size: 12px; color: #666; margin: 0;">
+                        ⚠️ 기존 데이터가 있으면 추가됩니다. 중복 방지를 위해 차량번호는 자동 생성됩니다.
+                    </p>
                 </div>
 
                 <div style="background: #d1ecf1; padding: 20px; border-radius: 10px;">
@@ -603,11 +629,58 @@
             }
         }
 
+        // 100개 가상 데이터 생성 함수
+        function generateSampleData() {
+            const sampleData = [];
+            const koreanNames = ['김철수', '이영희', '박민수', '최지영', '정수진', '한동훈', '송미영', '강태호', '윤서연', '임재현', '조현우', '오지은', '신민철', '배수정', '홍길동', '김영수', '이미경', '박준호', '최수진', '정민호'];
+            const buildings = ['1', '2', '3', '4', '5', 'A', 'B', 'C', 'D', 'E', '가', '나', '다', '라', '마'];
+            const phonePrefixes = ['010', '011', '016', '017', '018', '019'];
+            const koreanChars = ['가', '나', '다', '라', '마', '바', '사', '아', '자', '차', '카', '타', '파', '하'];
+            
+            for (let i = 1; i <= 100; i++) {
+                // 차량번호 생성 (2-3자리 숫자 + 한글 + 4자리 숫자)
+                const firstDigits = Math.floor(Math.random() * 900) + 100; // 100-999
+                const koreanChar = koreanChars[Math.floor(Math.random() * koreanChars.length)];
+                const lastDigits = Math.floor(Math.random() * 9000) + 1000; // 1000-9999
+                const licensePlate = `${firstDigits}${koreanChar}${lastDigits}`;
+                
+                // 소유자명
+                const ownerName = koreanNames[Math.floor(Math.random() * koreanNames.length)];
+                
+                // 연락처
+                const phonePrefix = phonePrefixes[Math.floor(Math.random() * phonePrefixes.length)];
+                const phoneNumber = `${phonePrefix}-${Math.floor(Math.random() * 9000) + 1000}-${Math.floor(Math.random() * 9000) + 1000}`;
+                
+                // 동호수
+                const building = buildings[Math.floor(Math.random() * buildings.length)];
+                const unit = Math.floor(Math.random() * 900) + 101; // 101-1000
+                
+                // 등록일 (최근 1년 내)
+                const registeredAt = new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString();
+                
+                sampleData.push({
+                    id: Date.now() + i,
+                    licensePlate: licensePlate,
+                    ownerName: ownerName,
+                    phoneNumber: phoneNumber,
+                    building: building,
+                    unit: unit,
+                    registeredAt: registeredAt
+                });
+            }
+            
+            return sampleData;
+        }
+
         // 페이지 로드 시 초기화
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('페이지 로드 시작...');
             
             try {
+                // 모든 가상 데이터 강제 삭제
+                await forceClearAllData();
+                console.log('모든 가상 데이터 삭제 완료');
+                
                 await loadVehicles();
                 console.log('차량 데이터 로드 완료:', vehicles.length, '개');
                 
@@ -616,6 +689,17 @@
                 
                 // 폼 이벤트 리스너 (차량 등록은 onclick으로 처리하므로 제거)
                 document.getElementById('editForm').addEventListener('submit', updateVehicle);
+                
+                // 차량 검색 이벤트 리스너 추가
+                const searchInput = document.getElementById('searchVehicleList');
+                if (searchInput) {
+                    searchInput.addEventListener('input', searchVehicles);
+                    searchInput.addEventListener('keyup', function(e) {
+                        if (e.key === 'Enter') {
+                            searchVehicles();
+                        }
+                    });
+                }
                 
                 console.log('이벤트 리스너 등록 완료');
             } catch (error) {
@@ -731,41 +815,94 @@
                 vehicles = await loadVehiclesFromDB();
                 console.log('로드된 차량 수:', vehicles.length);
                 
-                const vehicleList = document.getElementById('vehicleList');
-                
-                if (vehicles.length === 0) {
-                    console.log('등록된 차량이 없음 - 빈 상태 표시');
-                    vehicleList.innerHTML = `
-                        <div class="empty-state">
-                            <div style="font-size: 48px; margin-bottom: 20px;">🚗</div>
-                            <p>등록된 차량이 없습니다.</p>
-                            <p style="font-size: 14px; margin-top: 10px;">차량 등록 탭에서 새 차량을 등록해보세요.</p>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                console.log('차량 목록 HTML 생성 중...');
-                vehicleList.innerHTML = vehicles.map(vehicle => `
-                    <div class="vehicle-item">
-                        <div class="vehicle-info">
-                            <div class="vehicle-number">${vehicle.licensePlate}</div>
-                        </div>
-                        <div style="margin-bottom: 12px; font-size: 14px; color: #666; line-height: 1.5;">
-                            <div style="margin-bottom: 4px;">소유자: ${vehicle.ownerName}</div>
-                            <div style="margin-bottom: 4px;">연락처: ${vehicle.phoneNumber}</div>
-                            <div style="margin-bottom: 4px;">주소: ${vehicle.building}동 ${vehicle.unit}호</div>
-                            <div>등록일: ${new Date(vehicle.registeredAt).toLocaleDateString()}</div>
-                        </div>
-                        <div class="vehicle-actions">
-                            <button class="btn-small btn-edit" onclick="editVehicle(${vehicle.id})">수정</button>
-                            <button class="btn-small btn-delete" onclick="deleteVehicle(${vehicle.id})">삭제</button>
-                        </div>
-                    </div>
-                `).join('');
-                console.log('차량 목록 HTML 생성 완료');
+                // 검색어가 있으면 필터링된 목록 표시, 없으면 전체 목록 표시
+                displayVehicleList();
             } catch (error) {
                 console.error('차량 목록 로드 실패:', error);
+            }
+        }
+
+        // 차량 목록 표시 (검색 기능 포함)
+        function displayVehicleList() {
+            const vehicleList = document.getElementById('vehicleList');
+            const searchInput = document.getElementById('searchVehicleList');
+            const searchResultCount = document.getElementById('searchResultCount');
+            
+            if (vehicles.length === 0) {
+                console.log('등록된 차량이 없음 - 빈 상태 표시');
+                vehicleList.innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size: 48px; margin-bottom: 20px;">🚗</div>
+                        <p>등록된 차량이 없습니다.</p>
+                        <p style="font-size: 14px; margin-top: 10px;">차량 등록 탭에서 새 차량을 등록해보세요.</p>
+                    </div>
+                `;
+                if (searchResultCount) searchResultCount.textContent = '';
+                return;
+            }
+            
+            let filteredVehicles = vehicles;
+            
+            // 검색어가 있으면 필터링
+            if (searchInput && searchInput.value.trim()) {
+                const searchTerm = searchInput.value.trim().toLowerCase();
+                filteredVehicles = vehicles.filter(vehicle => 
+                    vehicle.licensePlate.toLowerCase().includes(searchTerm) ||
+                    vehicle.ownerName.toLowerCase().includes(searchTerm) ||
+                    vehicle.phoneNumber.includes(searchTerm) ||
+                    `${vehicle.building}동${vehicle.unit}호`.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            // 차량번호 뒷자리 기준으로 정렬
+            const sortedVehicles = filteredVehicles.sort((a, b) => {
+                const aLastFour = a.licensePlate.slice(-4);
+                const bLastFour = b.licensePlate.slice(-4);
+                return aLastFour.localeCompare(bLastFour, undefined, { numeric: true });
+            });
+            
+            console.log('차량 목록 HTML 생성 중... (뒷자리 기준 정렬)');
+            vehicleList.innerHTML = sortedVehicles.map(vehicle => `
+                <div class="vehicle-item">
+                    <div class="vehicle-info">
+                        <div class="vehicle-number">${vehicle.licensePlate}</div>
+                    </div>
+                    <div style="margin-bottom: 12px; font-size: 14px; color: #666; line-height: 1.5;">
+                        <div style="margin-bottom: 4px;">소유자: ${vehicle.ownerName}</div>
+                        <div style="margin-bottom: 4px;">연락처: ${vehicle.phoneNumber}</div>
+                        <div style="margin-bottom: 4px;">주소: ${vehicle.building}동 ${vehicle.unit}호</div>
+                        <div>등록일: ${new Date(vehicle.registeredAt).toLocaleDateString()}</div>
+                    </div>
+                    <div class="vehicle-actions">
+                        <button class="btn-small btn-edit" onclick="editVehicle(${vehicle.id})">수정</button>
+                        <button class="btn-small btn-delete" onclick="deleteVehicle(${vehicle.id})">삭제</button>
+                    </div>
+                </div>
+            `).join('');
+            
+            // 검색 결과 개수 표시
+            if (searchResultCount) {
+                if (searchInput && searchInput.value.trim()) {
+                    searchResultCount.textContent = `검색 결과: ${sortedVehicles.length}개 / 전체 ${vehicles.length}개`;
+                } else {
+                    searchResultCount.textContent = `총 ${vehicles.length}개 차량`;
+                }
+            }
+            
+            console.log('차량 목록 HTML 생성 완료 (뒷자리 기준 정렬)');
+        }
+
+        // 차량 검색 기능
+        function searchVehicles() {
+            displayVehicleList();
+        }
+
+        // 차량 검색 초기화
+        function clearVehicleSearch() {
+            const searchInput = document.getElementById('searchVehicleList');
+            if (searchInput) {
+                searchInput.value = '';
+                displayVehicleList();
             }
         }
 
@@ -1300,6 +1437,36 @@
             }
         }
 
+        // 테스트 데이터 생성 함수
+        async function generateTestData() {
+            if (confirm('100개의 테스트 데이터를 생성하시겠습니까?\n기존 데이터가 있으면 추가됩니다.')) {
+                try {
+                    console.log('테스트 데이터 생성 시작...');
+                    const sampleData = generateSampleData();
+                    
+                    // 기존 차량번호와 중복되지 않도록 필터링
+                    const existingPlates = vehicles.map(v => v.licensePlate);
+                    const uniqueSampleData = sampleData.filter(data => !existingPlates.includes(data.licensePlate));
+                    
+                    if (uniqueSampleData.length === 0) {
+                        alert('생성할 수 있는 고유한 차량번호가 없습니다.\n모든 데이터 삭제 후 다시 시도해주세요.');
+                        return;
+                    }
+                    
+                    // 기존 데이터에 추가
+                    vehicles = vehicles.concat(uniqueSampleData);
+                    await saveVehicles();
+                    await loadVehicles();
+                    
+                    alert(`${uniqueSampleData.length}개의 테스트 데이터가 생성되었습니다!\n총 ${vehicles.length}개의 차량이 등록되어 있습니다.`);
+                    console.log('테스트 데이터 생성 완료:', uniqueSampleData.length, '개');
+                } catch (error) {
+                    console.error('테스트 데이터 생성 실패:', error);
+                    alert('테스트 데이터 생성 중 오류가 발생했습니다.');
+                }
+            }
+        }
+
         // 모든 데이터 삭제
         async function clearAllData() {
             if (confirm('정말로 모든 데이터를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) {
@@ -1329,6 +1496,35 @@
                         alert('데이터 삭제 중 오류가 발생했습니다.');
                     }
                 }
+            }
+        }
+
+        // 강제 데이터 초기화 (페이지 로드 시 자동 실행)
+        async function forceClearAllData() {
+            try {
+                console.log('강제 데이터 초기화 시작...');
+                vehicles = [];
+                searchHistory = [];
+                
+                // IndexedDB 완전 삭제
+                if (db) {
+                    db.close();
+                    const deleteRequest = indexedDB.deleteDatabase('ParkingAppDB');
+                    deleteRequest.onsuccess = () => {
+                        console.log('IndexedDB 데이터베이스 삭제 완료');
+                        // 데이터베이스 재초기화
+                        initDB();
+                    };
+                }
+                
+                // localStorage 완전 삭제
+                localStorage.removeItem('vehicles');
+                localStorage.removeItem('searchHistory');
+                localStorage.clear();
+                
+                console.log('모든 데이터 강제 삭제 완료');
+            } catch (error) {
+                console.error('강제 데이터 삭제 중 오류:', error);
             }
         }
     </script>
