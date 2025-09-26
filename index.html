@@ -400,9 +400,12 @@
                 <h3 style="margin-bottom: 20px; color: #333;">주차된 차량 조회</h3>
                 <div class="form-group">
                     <label for="searchPlate">차량번호 또는 뒤 4자리 입력</label>
-                    <input type="text" id="searchPlate" placeholder="예: 12가3456 또는 3456">
+                    <input type="text" id="searchPlate" placeholder="예: 12가3456 또는 3456" maxlength="8">
+                    <div style="margin-top: 8px; font-size: 12px; color: #666;">
+                        💡 전체 차량번호 또는 뒤 4자리 숫자만 입력하세요
+                    </div>
                 </div>
-                <button type="button" onclick="searchVehicle()" class="btn btn-success">조회하기</button>
+                <button type="button" onclick="searchVehicle()" class="btn btn-success">🔍 조회하기</button>
                 <div id="searchResult" style="margin-top: 20px; min-height: 50px;"></div>
                 
                 <!-- 조회 기록 섹션 -->
@@ -460,16 +463,31 @@
                 </div>
 
                 <div style="background: #d1ecf1; padding: 20px; border-radius: 10px;">
-                    <h4 style="margin-bottom: 15px; color: #333;">ℹ️ 저장 방식</h4>
-                    <p style="margin-bottom: 10px; color: #666; font-size: 14px;">
-                        <strong>IndexedDB:</strong> 브라우저 캐시 삭제해도 데이터 유지
-                    </p>
-                    <p style="margin-bottom: 10px; color: #666; font-size: 14px;">
-                        <strong>LocalStorage:</strong> 백업 저장소로 사용
-                    </p>
-                    <p style="color: #666; font-size: 14px;">
-                        <strong>JSON 파일:</strong> 수동 백업 및 다른 기기로 이동 가능
-                    </p>
+                    <h4 style="margin-bottom: 15px; color: #333;">ℹ️ 데이터 저장 위치</h4>
+                    <div style="background: #e8f4fd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <h5 style="margin-bottom: 10px; color: #333;">💾 주요 저장소: IndexedDB</h5>
+                        <p style="margin-bottom: 8px; color: #666; font-size: 14px;">
+                            • 브라우저 캐시 삭제해도 데이터 유지<br>
+                            • 대용량 데이터 처리 가능<br>
+                            • 비동기 처리로 성능 최적화
+                        </p>
+                    </div>
+                    <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <h5 style="margin-bottom: 10px; color: #333;">🔄 백업 저장소: LocalStorage</h5>
+                        <p style="margin-bottom: 8px; color: #666; font-size: 14px;">
+                            • IndexedDB 실패 시 자동 백업<br>
+                            • 브라우저별 데이터 동기화<br>
+                            • 빠른 접근 속도
+                        </p>
+                    </div>
+                    <div style="background: #d4edda; padding: 15px; border-radius: 8px;">
+                        <h5 style="margin-bottom: 10px; color: #333;">📁 수동 백업: JSON 파일</h5>
+                        <p style="color: #666; font-size: 14px;">
+                            • 다른 기기로 데이터 이동 가능<br>
+                            • 장기 보관 및 아카이브<br>
+                            • 데이터 복원 및 마이그레이션
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1089,12 +1107,22 @@
         async function updateVehicle(e) {
             e.preventDefault();
             
+            console.log('차량 정보 수정 시작...');
+            
             const id = parseInt(document.getElementById('editId').value);
             const licensePlate = document.getElementById('editLicensePlate').value.trim();
             const ownerName = document.getElementById('editOwnerName').value.trim();
             const phoneNumber = document.getElementById('editPhoneNumber').value.trim();
             const building = document.getElementById('editBuilding').value;
             const unit = document.getElementById('editUnit').value;
+            
+            console.log('수정할 데이터:', { id, licensePlate, ownerName, phoneNumber, building, unit });
+            
+            // 필수 필드 검증
+            if (!licensePlate || !ownerName || !phoneNumber || !building || !unit) {
+                alert('모든 필드를 입력해주세요.');
+                return;
+            }
             
             // 차량번호 형식 검증
             if (!validateLicensePlate(licensePlate)) {
@@ -1108,32 +1136,75 @@
                 return;
             }
             
-            const vehicleIndex = vehicles.findIndex(v => v.id === id);
-            if (vehicleIndex !== -1) {
-                vehicles[vehicleIndex] = {
-                    ...vehicles[vehicleIndex],
-                    licensePlate: licensePlate,
-                    ownerName: ownerName,
-                    phoneNumber: phoneNumber,
-                    building: building,
-                    unit: unit
-                };
-                
-                await saveVehicles();
-                await loadVehicles();
-                closeModal();
-                
-                alert('차량 정보가 수정되었습니다!');
+            try {
+                const vehicleIndex = vehicles.findIndex(v => v.id === id);
+                if (vehicleIndex !== -1) {
+                    const originalVehicle = vehicles[vehicleIndex];
+                    
+                    vehicles[vehicleIndex] = {
+                        ...vehicles[vehicleIndex],
+                        licensePlate: licensePlate,
+                        ownerName: ownerName,
+                        phoneNumber: phoneNumber,
+                        building: building,
+                        unit: unit
+                    };
+                    
+                    console.log('차량 정보 업데이트됨:', vehicles[vehicleIndex]);
+                    
+                    await saveVehicles();
+                    console.log('데이터 저장 완료');
+                    
+                    await loadVehicles();
+                    console.log('차량 목록 새로고침 완료');
+                    
+                    closeModal();
+                    
+                    alert(`차량 정보가 성공적으로 수정되었습니다!\n차량번호: ${licensePlate}\n소유자: ${ownerName}`);
+                } else {
+                    alert('수정할 차량을 찾을 수 없습니다.');
+                }
+            } catch (error) {
+                console.error('차량 수정 중 오류 발생:', error);
+                alert('차량 정보 수정 중 오류가 발생했습니다. 다시 시도해주세요.');
             }
         }
 
         // 차량 삭제
         async function deleteVehicle(id) {
-            if (confirm('정말로 이 차량을 삭제하시겠습니까?')) {
-                vehicles = vehicles.filter(v => v.id !== id);
-                await saveVehicles();
-                await loadVehicles();
-                alert('차량이 삭제되었습니다.');
+            const vehicle = vehicles.find(v => v.id === id);
+            if (!vehicle) {
+                alert('삭제할 차량을 찾을 수 없습니다.');
+                return;
+            }
+            
+            const confirmMessage = `정말로 이 차량을 삭제하시겠습니까?\n\n차량번호: ${vehicle.licensePlate}\n소유자: ${vehicle.ownerName}\n주소: ${vehicle.building}동 ${vehicle.unit}호\n\n이 작업은 되돌릴 수 없습니다.`;
+            
+            if (confirm(confirmMessage)) {
+                try {
+                    console.log('차량 삭제 시작:', vehicle);
+                    
+                    const originalLength = vehicles.length;
+                    vehicles = vehicles.filter(v => v.id !== id);
+                    
+                    if (vehicles.length === originalLength) {
+                        alert('차량 삭제에 실패했습니다. 차량을 찾을 수 없습니다.');
+                        return;
+                    }
+                    
+                    console.log('차량 배열에서 제거됨, 남은 차량 수:', vehicles.length);
+                    
+                    await saveVehicles();
+                    console.log('데이터 저장 완료');
+                    
+                    await loadVehicles();
+                    console.log('차량 목록 새로고침 완료');
+                    
+                    alert(`차량이 성공적으로 삭제되었습니다!\n삭제된 차량: ${vehicle.licensePlate} (${vehicle.ownerName})`);
+                } catch (error) {
+                    console.error('차량 삭제 중 오류 발생:', error);
+                    alert('차량 삭제 중 오류가 발생했습니다. 다시 시도해주세요.');
+                }
             }
         }
 
@@ -1158,6 +1229,17 @@
                 alert('조회 결과를 표시할 수 없습니다. 페이지를 새로고침해주세요.');
                 return;
             }
+            
+            // 로딩 표시
+            searchResult.innerHTML = `
+                <div style="text-align: center; padding: 20px; color: #666;">
+                    <div style="font-size: 24px; margin-bottom: 10px;">🔍</div>
+                    <p>차량을 조회하고 있습니다...</p>
+                </div>
+            `;
+            
+            // 약간의 지연을 두어 로딩 효과 표시
+            await new Promise(resolve => setTimeout(resolve, 500));
             
             console.log('검색어:', searchPlate);
             console.log('등록된 차량들:', vehicles.map(v => v.licensePlate));
@@ -1195,6 +1277,9 @@
                             <div style="margin-bottom: 6px;"><strong>주소:</strong> ${vehicle.building}동 ${vehicle.unit}호</div>
                             <div><strong>등록일:</strong> ${new Date(vehicle.registeredAt).toLocaleDateString()}</div>
                         </div>
+                        <div style="margin-top: 15px; padding: 10px; background: #e8f5e8; border-radius: 8px; font-size: 14px; color: #28a745;">
+                            💡 이 차량은 등록된 주민의 차량입니다.
+                        </div>
                     </div>
                 `;
                 
@@ -1211,6 +1296,9 @@
                         <h3>❌ 등록되지 않은 차량입니다</h3>
                         <p>입력하신 "${searchPlate}"로 등록된 차량을 찾을 수 없습니다.</p>
                         <p style="margin-top: 10px; font-size: 14px;">차량번호 전체 또는 뒤 4자리 숫자로 검색해보세요.</p>
+                        <div style="margin-top: 15px; padding: 10px; background: #f8d7da; border-radius: 8px; font-size: 14px; color: #721c24;">
+                            ⚠️ 이 차량은 등록되지 않은 차량입니다. 주민 등록이 필요할 수 있습니다.
+                        </div>
                         <p style="margin-top: 10px; font-size: 12px; color: #666;">조회 기록이 저장되었습니다.</p>
                     </div>
                 `;
@@ -1310,6 +1398,13 @@
                 let value = e.target.value.replace(/[^가-힣0-9]/g, '');
                 e.target.value = value;
                 validateAndShowSearchFeedback(e.target, value);
+            }
+        });
+
+        // Enter 키로 검색 기능 추가
+        document.getElementById('searchPlate').addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+                searchVehicle();
             }
         });
 
