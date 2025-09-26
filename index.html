@@ -397,11 +397,17 @@
                         <input type="text" id="searchVehicleList" placeholder="차량번호 또는 소유자명으로 검색..." style="font-size: 14px;">
                     </div>
                     <div style="display: flex; gap: 10px; align-items: center;">
+                        <button onclick="searchVehicleInList()" class="btn btn-primary" style="padding: 8px 16px; font-size: 14px; margin: 0;">검색</button>
                         <button onclick="clearVehicleSearch()" style="background: #6c757d; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;">
                             검색 초기화
                         </button>
                         <span id="searchResultCount" style="font-size: 12px; color: #666;"></span>
                     </div>
+                </div>
+                
+                <!-- 검색 결과 상세 정보 -->
+                <div id="vehicleDetailResult" style="display: none; margin-bottom: 20px;">
+                    <!-- 검색된 차량의 상세 정보가 여기에 표시됩니다 -->
                 </div>
                 
                 <div id="vehicleList" class="vehicle-list">
@@ -728,7 +734,7 @@
                     searchInput.addEventListener('input', searchVehicles);
                     searchInput.addEventListener('keyup', function(e) {
                         if (e.key === 'Enter') {
-                            searchVehicles();
+                            searchVehicleInList();
                         }
                     });
                 }
@@ -906,7 +912,7 @@
             vehicleList.innerHTML = sortedVehicles.map(vehicle => `
                 <div class="vehicle-item">
                     <div class="vehicle-info">
-                        <div class="vehicle-number clickable" onclick="searchVehicleFromList('${vehicle.licensePlate}')" title="클릭하여 검색하기">${vehicle.licensePlate}</div>
+                        <div class="vehicle-number">${vehicle.licensePlate}</div>
                     </div>
                     <div style="margin-bottom: 12px; font-size: 14px; color: #666; line-height: 1.5;">
                         <div style="margin-bottom: 4px;">소유자: ${vehicle.ownerName}</div>
@@ -941,28 +947,102 @@
         // 차량 검색 초기화
         function clearVehicleSearch() {
             const searchInput = document.getElementById('searchVehicleList');
+            const vehicleDetailResult = document.getElementById('vehicleDetailResult');
+            
             if (searchInput) {
                 searchInput.value = '';
                 displayVehicleList();
             }
+            
+            if (vehicleDetailResult) {
+                vehicleDetailResult.style.display = 'none';
+                vehicleDetailResult.innerHTML = '';
+            }
         }
 
-        // 등록차량 목록에서 차량번호 클릭 시 검색 탭으로 이동하여 검색
-        function searchVehicleFromList(licensePlate) {
-            console.log('차량번호 클릭으로 검색 시작:', licensePlate);
+        // 등록차량 목록에서 검색 실행
+        function searchVehicleInList() {
+            const searchInput = document.getElementById('searchVehicleList');
+            const searchTerm = searchInput.value.trim();
+            const vehicleDetailResult = document.getElementById('vehicleDetailResult');
             
-            // 검색 탭으로 이동
-            showTab('search');
+            if (!searchTerm) {
+                alert('검색할 차량번호 또는 소유자명을 입력해주세요.');
+                return;
+            }
             
-            // 검색 입력란에 차량번호 설정
-            const searchInput = document.getElementById('searchPlate');
-            if (searchInput) {
-                searchInput.value = licensePlate;
-                
-                // 약간의 지연 후 자동 검색 실행
-                setTimeout(() => {
-                    searchVehicle();
-                }, 300);
+            console.log('등록차량 목록에서 검색:', searchTerm);
+            
+            // 정확한 차량번호로 먼저 검색
+            let vehicle = vehicles.find(v => v.licensePlate === searchTerm);
+            
+            // 정확한 매치가 없으면 소유자명으로 검색
+            if (!vehicle) {
+                vehicle = vehicles.find(v => v.ownerName.toLowerCase().includes(searchTerm.toLowerCase()));
+            }
+            
+            // 소유자명 검색도 없으면 부분 차량번호로 검색
+            if (!vehicle) {
+                vehicle = vehicles.find(v => v.licensePlate.toLowerCase().includes(searchTerm.toLowerCase()));
+            }
+            
+            if (vehicle) {
+                console.log('검색된 차량:', vehicle);
+                showVehicleDetail(vehicle);
+            } else {
+                console.log('검색 결과 없음');
+                showVehicleDetail(null, searchTerm);
+            }
+        }
+
+        // 차량 상세 정보 표시
+        function showVehicleDetail(vehicle, searchTerm = '') {
+            const vehicleDetailResult = document.getElementById('vehicleDetailResult');
+            
+            if (vehicle) {
+                vehicleDetailResult.innerHTML = `
+                    <div style="background: #e8f5e8; border: 2px solid #28a745; border-radius: 15px; padding: 20px;">
+                        <h4 style="color: #28a745; margin-bottom: 15px; display: flex; align-items: center;">
+                            ✅ 검색된 차량 정보
+                        </h4>
+                        <div style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                                <div><strong>차량번호:</strong> ${vehicle.licensePlate}</div>
+                                <div><strong>소유자:</strong> ${vehicle.ownerName}</div>
+                                <div><strong>연락처:</strong> ${vehicle.phoneNumber}</div>
+                                <div><strong>주소:</strong> ${vehicle.building}동 ${vehicle.unit}호</div>
+                            </div>
+                            <div style="margin-bottom: 15px;">
+                                <strong>등록일:</strong> ${new Date(vehicle.registeredAt).toLocaleDateString('ko-KR', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric',
+                                    weekday: 'long'
+                                })}
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; justify-content: center;">
+                            <button onclick="editVehicle(${vehicle.id})" class="btn btn-primary" style="padding: 10px 20px;">
+                                ✏️ 수정하기
+                            </button>
+                            <button onclick="deleteVehicle(${vehicle.id})" class="btn btn-danger" style="padding: 10px 20px;">
+                                🗑️ 삭제하기
+                            </button>
+                        </div>
+                    </div>
+                `;
+                vehicleDetailResult.style.display = 'block';
+            } else {
+                vehicleDetailResult.innerHTML = `
+                    <div style="background: #f8d7da; border: 2px solid #dc3545; border-radius: 15px; padding: 20px; text-align: center;">
+                        <h4 style="color: #dc3545; margin-bottom: 15px;">
+                            ❌ 검색 결과 없음
+                        </h4>
+                        <p style="margin-bottom: 10px;">"${searchTerm}"로 등록된 차량을 찾을 수 없습니다.</p>
+                        <p style="font-size: 14px; color: #666;">차량번호 또는 소유자명을 정확히 입력해주세요.</p>
+                    </div>
+                `;
+                vehicleDetailResult.style.display = 'block';
             }
         }
 
